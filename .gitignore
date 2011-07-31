@@ -1,0 +1,43 @@
+# This file is used to ignore files which are generated
+# ----------------------------------------------------------------------------
+
+*.o
+.DS_Store
+.svn
+
+# CMake generated files
+Makefile*
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
+
+# Vim temporary files
+.*.swp
+
+# Visual Studio generated files
+*.ib_pdb_index
+*.idb
+*.ilk
+*.pdb
+*.sln
+*.suo
+*.sdf
+*.vcproj
+*vcproj.*.*.user
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
+*vcxproj.*.*.user
+*.ncb
+*.dir
+Debug
+Release
+
+# Log files
+src/*/*.csv
+
+# Binaries
+# --------
+
+bin
+lib
