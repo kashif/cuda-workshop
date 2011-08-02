@@ -10,9 +10,12 @@ http://cmake.org/cmake/resources/software.html
 Install CUDA 4.0 from:
 http://developer.nvidia.com/cuda-downloads
 
+Install GLEW from:
+http://glew.sourceforge.net
+
 ## Adding a new project
 
-In the `src/` create a project folder e.g. `matrixMul/` with its source files and create a new `CMakeLists.txt` listing the source files and the libraries to link against e.g.:
+In the `src/` create a project folder e.g. `matrixMul/` with its source files and create a new `CMakeLists.txt` listing the CUDA and C/C++ files and the libraries to link against e.g.:
 
     CUDA_ADD_EXECUTABLE(matrixMul
       matrixMul.cu
@@ -24,7 +27,7 @@ In the `src/` create a project folder e.g. `matrixMul/` with its source files an
       shrutil
     )
 
-Finally add the `matrixMul` sub-directory to the `src/CMakeLists.txt` file e.g.:
+Finally add the new project folder, for example `matrixMul` to the `src/CMakeLists.txt` file:
 
     add_subdirectory (matrixMul)
 
