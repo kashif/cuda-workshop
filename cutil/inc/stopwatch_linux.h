@@ -19,8 +19,8 @@
 #include <sys/time.h>
 
 //! Windows specific implementation of StopWatch
-class StopWatchLinux {
-
+class StopWatchLinux
+{
 protected:
 
     //! Constructor, default

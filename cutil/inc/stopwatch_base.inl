@@ -63,8 +63,8 @@ StopWatchBase<OSPolicy>::reset()
 //! time between the last start() and stop call is returned
 ////////////////////////////////////////////////////////////////////////////////
 template<class OSPolicy>
-inline const float
-StopWatchBase<OSPolicy>::getTime() const 
+inline float
+StopWatchBase<OSPolicy>::getTime()
 {
     return OSPolicy::getTime();
 }
@@ -74,8 +74,8 @@ StopWatchBase<OSPolicy>::getTime() const
 //! and the total time.
 ////////////////////////////////////////////////////////////////////////////////
 template<class OSPolicy>
-inline const float
-StopWatchBase<OSPolicy>::getAverageTime() const 
+inline float
+StopWatchBase<OSPolicy>::getAverageTime() 
 {
     return OSPolicy::getAverageTime();
 }

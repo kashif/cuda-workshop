@@ -749,20 +749,7 @@ extern "C" {
 #endif
 
 // This is for the CUTIL bank checker
-#ifdef _DEBUG
-    #if __DEVICE_EMULATION__
-        // Interface for bank conflict checker
-    #define CUT_BANK_CHECKER( array, index)                                      \
-        (cutCheckBankAccess( threadIdx.x, threadIdx.y, threadIdx.z, blockDim.x,  \
-        blockDim.y, blockDim.z,                                                  \
-        __FILE__, __LINE__, #array, index ),                                     \
-        array[index])
-    #else
-    #define CUT_BANK_CHECKER( array, index)  array[index]
-    #endif
-#else
-    #define CUT_BANK_CHECKER( array, index)  array[index]
-#endif
+#define CUT_BANK_CHECKER( array, index)  array[index]
 
 #  define CU_SAFE_CALL_NO_SYNC( call ) {                                     \
     CUresult err = call;                                                     \
@@ -855,12 +842,6 @@ extern "C" {
         exit(EXIT_FAILURE);                                                  \
     }
 
-#if __DEVICE_EMULATION__
-
-#  define CUT_DEVICE_INIT(ARGC, ARGV)
-
-#else
-
 #  define CUT_DEVICE_INIT(ARGC, ARGV) {                                      \
     int deviceCount;                                                         \
     CUDA_SAFE_CALL_NO_SYNC(cudaGetDeviceCount(&deviceCount));                \
@@ -909,9 +890,6 @@ extern "C" {
                 errorMessage, __FILE__, __LINE__, cudaGetErrorString( err) );\
         exit(EXIT_FAILURE);                                                  \
     } }
-
-
-#endif
 
 #  define CUT_DEVICE_INIT_DRV(cuDevice, ARGC, ARGV) {                        \
     cuDevice = 0;                                                            \

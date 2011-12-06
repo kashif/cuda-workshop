@@ -53,11 +53,11 @@ public:
     //! Time in msec. after start. If the stop watch is still running (i.e. there
     //! was no call to stop()) then the elapsed time is returned, otherwise the
     //! time between the last start() and stop call is returned
-    inline const float getTime() const;
+    inline float getTime();
 
     //! Mean time to date based on the number of times the stopwatch has been 
     //! _stopped_ (ie finished sessions) and the current total time
-    inline const float getAverageTime() const;
+    inline float getAverageTime();
 
 private:
 
@@ -70,6 +70,7 @@ private:
 
 // include, implementation
 #include <stopwatch_base.inl>
+
 
 #endif // _STOPWATCH_BASE_H_
 
