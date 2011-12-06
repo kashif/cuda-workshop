@@ -58,12 +58,12 @@ inline int ConvertSMVer2Cores(int major, int minor)
 	} sSMtoCores;
 
 	sSMtoCores nGpuArchCoresPerSM[] = 
-	{ { 0x10,  8 },
-	  { 0x11,  8 },
-	  { 0x12,  8 },
-	  { 0x13,  8 },
-	  { 0x20, 32 },
-	  { 0x21, 48 },
+	{ { 0x10,  8 }, // Tesla Generation (SM 1.0) G80 class
+	  { 0x11,  8 }, // Tesla Generation (SM 1.1) G8x class
+	  { 0x12,  8 }, // Tesla Generation (SM 1.2) G9x class
+	  { 0x13,  8 }, // Tesla Generation (SM 1.3) GT200 class
+	  { 0x20, 32 }, // Fermi Generation (SM 2.0) GF100 class
+	  { 0x21, 48 }, // Fermi Generation (SM 2.1) GF10x class
 	  {   -1, -1 }
 	};
 
@@ -74,7 +74,7 @@ inline int ConvertSMVer2Cores(int major, int minor)
 		}
 		index++;
 	}
-	printf("MapSMtoCores undefined SMversion %d.%d!\n", major, minor);
+	printf("MapSMtoCores SM %d.%d is undefined (please update to the latest SDK)!\n", major, minor);
 	return -1;
 }
 // end of GPU Architecture definitions

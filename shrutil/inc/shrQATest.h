@@ -16,17 +16,16 @@
 // Generic utilities for NVIDIA GPU Computing SDK 
 // *********************************************************************
 
-// reminders for output window and build log
+// OS dependent includes
 #ifdef _WIN32
     #pragma message ("Note: including windows.h")
     #pragma message ("Note: including math.h")
     #pragma message ("Note: including assert.h")
-#endif
+    #pragma message ("Note: including time.h")
 
-// OS dependent includes
-#ifdef _WIN32
-    // Headers needed for Windows
+// Headers needed for Windows
     #include <windows.h>
+	#include <time.h>
 #else
     // Headers needed for Linux
     #include <sys/stat.h>
@@ -36,6 +35,8 @@
     #include <stdlib.h>
     #include <string.h>
     #include <stdarg.h>
+    #include <unistd.h>
+    #include <time.h>
 #endif
 
 #ifndef STRCASECMP
@@ -111,37 +112,49 @@ enum eQAstatus {
     QA_WAIVED = 2
 };
 
+inline void __ExitInTime(int seconds)
+{
+    printf("> exiting in %d seconds: ", seconds);
+    fflush(stdout);
+    time_t t;
+    int count;
+    for (t=time(0)+seconds, count=seconds; time(0) < t; count--) {
+        printf("%d...", count ); fflush(stdout);
+#ifdef WIN32
+        Sleep(1000);
+#else
+        sleep(1);
+#endif
+    }
+    printf("done!\n");
+}
+
 
 inline void __shrQAFinish(int argc, const char **argv, int iStatus)
 {
-    bool bQATest = false, bNoPrompt = false;
+    // By default QATest is disabled and NoPrompt is Enabled (times out at seconds passed into __ExitInTime() )
+    bool bQATest = false, bNoPrompt = true, bQuitInTime = true;
     const char *sStatus[] = { "FAILED", "PASSED", "WAIVED", NULL };
 	
     for (int i=1; i < argc; i++) {
         int string_start = 0;
-            while (argv[i][string_start] == '-')
-                string_start++;
-            const char *string_argv = &argv[i][string_start];
+        while (argv[i][string_start] == '-')
+           string_start++;
 
-	    if (!STRCASECMP(string_argv, "qatest")) {
+        const char *string_argv = &argv[i][string_start];
+        if (!STRCASECMP(string_argv, "qatest")) {
            bQATest = true;
-#ifndef WIN32
-           bNoPrompt = true;
-#endif
         }	
-#ifdef WIN32
-        // we will not prompt only if -noprompt is specified, so in the SDK browser it will show a window
-        // after it is run
+        // For SDK individual samples that don't specify -noprompt or -prompt, 
+	// a 3 second delay will happen before exiting, giving a user time to view results
         if (!STRCASECMP(string_argv, "noprompt")) {
-           bNoPrompt = true;
+            bNoPrompt = true;
+            bQuitInTime = false;
         }
-#else // For Linux/Mac we want have prompting disabled
         if (!STRCASECMP(string_argv, "prompt")) {
-           bNoPrompt = false;
-        } else {
-           bNoPrompt = true;
+            bNoPrompt = false;
+            bQuitInTime = false;
         }
-#endif
     }
 
     int exename_start = findExeNameStart(argv[0]);
@@ -152,27 +165,37 @@ inline void __shrQAFinish(int argc, const char **argv, int iStatus)
     } else {
         printf("[%s] test results...\n%s\n", &(argv[0][exename_start]), sStatus[iStatus]);
     }
-    if (!bNoPrompt) {
-        printf("\nPress ENTER to exit...\n");
-        fflush( stdout);
-        fflush( stderr);
-        getchar();
+    if (bQuitInTime) {
+        __ExitInTime(3);
+    } else {
+        if (!bNoPrompt) {
+            printf("\nPress <Enter> to exit...\n");
+            fflush( stdout);
+            fflush( stderr);
+            getchar();
+        }
     }
 }
 
 inline void __shrQAFinish2(bool bQATest, int argc, const char **argv, int iStatus)
 {
+    bool bQuitInTime = true;
     const char *sStatus[] = { "FAILED", "PASSED", "WAIVED", NULL };
 	
     for (int i=1; i < argc; i++) {
         int string_start = 0;
-            while (argv[i][string_start] == '-')
-                string_start++;
-            const char *string_argv = &argv[i][string_start];
+        while (argv[i][string_start] == '-')
+           string_start++;
 
-	    if (!STRCASECMP(string_argv, "qatest")) {
-            bQATest = true;
-        }	
+        const char *string_argv = &argv[i][string_start];
+        // For SDK individual samples that don't specify -noprompt or -prompt, 
+	// a 3 second delay will happen before exiting, giving a user time to view results
+        if (!STRCASECMP(string_argv, "noprompt")) {
+            bQuitInTime = false;
+        }
+        if (!STRCASECMP(string_argv, "prompt")) {
+            bQuitInTime = false;
+        }
     }
 
     int exename_start = findExeNameStart(argv[0]);
@@ -182,6 +205,10 @@ inline void __shrQAFinish2(bool bQATest, int argc, const char **argv, int iStatu
         printf("\n");
     } else {
         printf("[%s] test results...\n%s\n", &(argv[0][exename_start]), sStatus[iStatus]);
+    }
+    
+    if (bQuitInTime) {
+        __ExitInTime(3);
     }
 }
 
