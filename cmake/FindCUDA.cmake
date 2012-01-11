@@ -106,6 +106,15 @@
 #  CUDA_ADD_CUSPARSE_TO_TARGET( cuda_target )
 #  -- Adds the cusparse library to the target (can be any target).
 #
+#  CUDA_ADD_NPP_TO_TARGET( cuda_target )
+#  -- Adds the npp library to the target (can be any target).
+#
+#  CUDA_ADD_NVCUVENC_TO_TARGET( cuda_target )
+#  -- Adds the nvcuvenc library to the target (can be any target).
+#
+#  CUDA_ADD_NVCUVID_TO_TARGET( cuda_target )
+#  -- Adds the nvcuvid library to the target (can be any target).
+#
 #  CUDA_ADD_EXECUTABLE( cuda_target file0 file1 ...
 #                       [WIN32] [MACOSX_BUNDLE] [EXCLUDE_FROM_ALL] [OPTIONS ...] )
 #  -- Creates an executable "cuda_target" which is made up of the files
@@ -228,6 +237,14 @@
 #  CUDA_CUSPARSE_LIBRARIES -- Device library for the Cuda Sparse
 #                           implementation (alterative to:
 #                           CUDA_ADD_CUSPARSE_TO_TARGET macro).
+#  CUDA_NPP_LIBRARIES    -- NVIDIA Performance Primitives library.
+#                           Only available for CUDA version 4.0+.
+#  CUDA_NVCUVENC_LIBRARIES -- CUDA Video Encoder library.
+#                           Only available for CUDA version 3.2+.
+#                           Windows only.
+#  CUDA_NVCUVID_LIBRARIES -- CUDA Video Decoder library.
+#                           Only available for CUDA version 3.2+.
+#                           Windows only.
 #
 #
 #  James Bigler, NVIDIA Corp (nvidia.com - jbigler)
@@ -442,10 +459,11 @@ if(NOT "${CUDA_TOOLKIT_ROOT_DIR}" STREQUAL "${CUDA_TOOLKIT_ROOT_DIR_INTERNAL}")
   unset(CUDA_cublasemu_LIBRARY CACHE)
   unset(CUDA_cufft_LIBRARY CACHE)
   unset(CUDA_cufftemu_LIBRARY CACHE)
-  if(CUDA_VERSION VERSION_GREATER "3.1")
-    unset(CUDA_curand_LIBRARY CACHE)
-    unset(CUDA_cusparse_LIBRARY CACHE)
-  endif()
+  unset(CUDA_curand_LIBRARY CACHE)
+  unset(CUDA_cusparse_LIBRARY CACHE)
+  unset(CUDA_npp_LIBRARY CACHE)
+  unset(CUDA_nvcuvenc_LIBRARY CACHE)
+  unset(CUDA_nvcuvid_LIBRARY CACHE)
 endif()
 
 if(NOT "${CUDA_SDK_ROOT_DIR}" STREQUAL "${CUDA_SDK_ROOT_DIR_INTERNAL}")
@@ -616,18 +634,25 @@ if(CUDA_VERSION VERSION_GREATER "3.0")
   endif()
 endif()
 
-# Search for cufft and cublas libraries.
+# Search for additional CUDA toolkit libraries.
 if(CUDA_VERSION VERSION_LESS "3.1")
   # Emulation libraries aren't available in version 3.1 onward.
   find_cuda_helper_libs(cufftemu)
   find_cuda_helper_libs(cublasemu)
 endif()
-find_cuda_helper_libs(cufft)
-find_cuda_helper_libs(cublas)
-
-if(CUDA_VERSION VERSION_GREATER "3.1")
-  find_cuda_helper_libs(curand)
+  find_cuda_helper_libs(cufft)
+  find_cuda_helper_libs(cublas)
+if(NOT CUDA_VERSION VERSION_LESS "3.2")
+  # cusparse showed up in version 3.2
   find_cuda_helper_libs(cusparse)
+  find_cuda_helper_libs(curand)
+  if (WIN32)
+    find_cuda_helper_libs(nvcuvenc)
+    find_cuda_helper_libs(nvcuvid)
+  endif()
+endif()
+if(NOT CUDA_VERSION VERSION_LESS "4.0")
+  find_cuda_helper_libs(npp)
 endif()
 
 if (CUDA_BUILD_EMULATION)
@@ -638,9 +663,16 @@ else()
   set(CUDA_CUBLAS_LIBRARIES ${CUDA_cublas_LIBRARY})
 endif()
 
-if(CUDA_VERSION VERSION_GREATER "3.1")
+if(NOT CUDA_VERSION VERSION_LESS "3.2")
   set(CUDA_CURAND_LIBRARIES ${CUDA_curand_LIBRARY})
   set(CUDA_CUSPARSE_LIBRARIES ${CUDA_cusparse_LIBRARY})
+  if (WIN32)
+    set(CUDA_NVCUVENC_LIBRARIES ${CUDA_nvcuvenc_LIBRARY})
+    set(CUDA_NVCUVID_LIBRARIES ${CUDA_nvcuvid_LIBRARY})
+  endif()
+endif()
+if(NOT CUDA_VERSION VERSION_LESS "4.0")
+  set(CUDA_NPP_LIBRARIES ${CUDA_npp_LIBRARY})
 endif()
 
 ########################
@@ -1345,7 +1377,7 @@ endmacro()
 # CUDA ADD CURAND TO TARGET
 ###############################################################################
 ###############################################################################
-if(CUDA_VERSION VERSION_GREATER "3.1")
+if(NOT CUDA_VERSION VERSION_LESS "3.2")
   macro(CUDA_ADD_CURAND_TO_TARGET target)
     target_link_libraries(${target} ${CUDA_curand_LIBRARY})
   endmacro()
@@ -1356,9 +1388,35 @@ endif()
 # CUDA ADD CUSPARSE TO TARGET
 ###############################################################################
 ###############################################################################
-if(CUDA_VERSION VERSION_GREATER "3.1")
+if(NOT CUDA_VERSION VERSION_LESS "3.2")
   macro(CUDA_ADD_CUSPARSE_TO_TARGET target)
     target_link_libraries(${target} ${CUDA_cusparse_LIBRARY})
+  endmacro()
+endif()
+
+###############################################################################
+###############################################################################
+# CUDA ADD NPP TO TARGET
+###############################################################################
+###############################################################################
+if(NOT CUDA_VERSION VERSION_LESS "4.0")
+  macro(CUDA_ADD_NPP_TO_TARGET target)
+    target_link_libraries(${target} ${CUDA_npp_LIBRARY})
+  endmacro()
+endif()
+
+###############################################################################
+###############################################################################
+# CUDA ADD NVCUVENC and NVCUVID TO TARGET
+###############################################################################
+###############################################################################
+if(NOT CUDA_VERSION VERSION_LESS "3.2" AND WIN32)
+  macro(CUDA_ADD_NVCUVENC_TO_TARGET target)
+    target_link_libraries(${target} ${CUDA_nvcuvenc_LIBRARY})
+  endmacro()
+
+  macro(CUDA_ADD_NVCUVID_TO_TARGET target)
+    target_link_libraries(${target} ${CUDA_nvcuvid_LIBRARY})
   endmacro()
 endif()
 
