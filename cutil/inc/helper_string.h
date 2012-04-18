@@ -1,3 +1,15 @@
+/////////////////////////////////////////////////////////////////////////////
+//
+// Copyright 1993-2012 NVIDIA Corporation.  All rights reserved.
+//
+// Please refer to the NVIDIA end user license agreement (EULA) associated
+// with this source code for terms and conditions that govern your use of
+// this software. Any use, reproduction, disclosure, or distribution of
+// this software and related documentation outside the terms of the EULA
+// is strictly prohibited.
+//
+/////////////////////////////////////////////////////////////////////////////
+
 // These are helper functions for the SDK samples (string parsing, timers, etc)
 #ifndef STRING_HELPER_H
 #define STRING_HELPER_H
@@ -14,6 +26,20 @@
    #ifndef STRNCASECMP
    #define STRNCASECMP _strnicmp
    #endif
+   #ifndef STRCPY
+   #define STRCPY(sFilePath, nLength, sPath) strcpy_s(sFilePath, nLength, sPath)
+   #endif
+
+   #ifndef FOPEN
+   #define FOPEN(fHandle,filename,mode) fopen_s(&fHandle, filename, mode)
+   #endif
+   #ifndef FOPEN_FAIL
+   #define FOPEN_FAIL(result) (result != 0)
+   #endif
+   #ifndef SSCANF
+   #define SSCANF sscanf_s
+   #endif
+
 #else
    #include <string.h>
    #include <strings.h>
@@ -23,6 +49,19 @@
    #endif
    #ifndef STRNCASECMP
    #define STRNCASECMP strncasecmp
+   #endif
+   #ifndef STRCPY
+   #define STRCPY(sFilePath, nLength, sPath) strcpy(sFilePath, sPath)
+   #endif
+
+   #ifndef FOPEN
+   #define FOPEN(fHandle,filename,mode) (fHandle = fopen(filename, mode))
+   #endif
+   #ifndef FOPEN_FAIL
+   #define FOPEN_FAIL(result) (result == NULL)
+   #endif
+   #ifndef SSCANF
+   #define SSCANF sscanf
    #endif
 #endif
 
@@ -169,17 +208,16 @@ inline char* sdkFindFilePath(const char* filename, const char* executable_path)
         size_t delimiter_pos = executable_name.find_last_of('\\');        
         executable_name.erase(0, delimiter_pos + 1);
 
-		if (executable_name.rfind(".exe") != std::string::npos)
+        if (executable_name.rfind(".exe") != std::string::npos)
         {
-			// we strip .exe, only if the .exe is found
-			executable_name.resize(executable_name.size() - 4);        
-		}
+            // we strip .exe, only if the .exe is found
+            executable_name.resize(executable_name.size() - 4);        
+        }
     #else
         // Linux & OSX path delimiter
         size_t delimiter_pos = executable_name.find_last_of('/');        
         executable_name.erase(0,delimiter_pos+1);
     #endif
-        
     }
     
     // Loop over all search paths and return the first hit
@@ -206,21 +244,18 @@ inline char* sdkFindFilePath(const char* filename, const char* executable_path)
         
         // Test if the file exists
         path.append(filename);
-        FILE *fp = fopen(path.c_str(), "rb");
+        FILE *fp;
+        FOPEN(fp, path.c_str(), "rb");
         if (fp != NULL)
         {
             fclose(fp);
             // File found
             // returning an allocated array here for backwards compatibility reasons
             char* file_path = (char*) malloc(path.length() + 1);
-        #ifdef _WIN32  
-            strcpy_s(file_path, path.length() + 1, path.c_str());
-        #else
-            strcpy(file_path, path.c_str());
-        #endif                
+            STRCPY(file_path, path.length() + 1, path.c_str());
             return file_path;
         }
-		if (fp) fclose(fp);
+        if (fp) fclose(fp);
     }    
 
     // File not found

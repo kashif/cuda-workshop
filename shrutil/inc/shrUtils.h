@@ -64,6 +64,7 @@ inline int ConvertSMVer2Cores(int major, int minor)
 	  { 0x13,  8 }, // Tesla Generation (SM 1.3) GT200 class
 	  { 0x20, 32 }, // Fermi Generation (SM 2.0) GF100 class
 	  { 0x21, 48 }, // Fermi Generation (SM 2.1) GF10x class
+	  { 0x30, 192}, // Fermi Generation (SM 3.0) GK10x class
 	  {   -1, -1 }
 	};
 

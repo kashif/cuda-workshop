@@ -1,5 +1,5 @@
 /*
- * Copyright 1993-2010 NVIDIA Corporation.  All rights reserved.
+ * Copyright 1993-2012 NVIDIA Corporation.  All rights reserved.
  *
  * Please refer to the NVIDIA end user license agreement (EULA) associated
  * with this source code for terms and conditions that govern your use of
@@ -92,13 +92,14 @@ inline int _ConvertSMVer2Cores_local(int major, int minor)
 	} sSMtoCores;
 
 	sSMtoCores nGpuArchCoresPerSM[] = 
-	{ { 0x10,  8 },
-	  { 0x11,  8 },
-	  { 0x12,  8 },
-	  { 0x13,  8 },
-	  { 0x20, 32 },
-	  { 0x21, 48 },
-	  {   -1, -1 } 
+	{ { 0x10,  8 }, // Tesla Generation (SM 1.0) G80 class
+	  { 0x11,  8 }, // Tesla Generation (SM 1.1) G8x class
+	  { 0x12,  8 }, // Tesla Generation (SM 1.2) G9x class
+	  { 0x13,  8 }, // Tesla Generation (SM 1.3) GT200 class
+	  { 0x20, 32 }, // Fermi Generation (SM 2.0) GF100 class
+	  { 0x21, 48 }, // Fermi Generation (SM 2.1) GF10x class
+	  { 0x30, 192}, // Fermi Generation (SM 3.0) GK10x class
+	  {   -1, -1 }
 	};
 
 	int index = 0;
@@ -492,7 +493,7 @@ inline void __cutilQAFinish(int argc, char **argv, bool bStatus)
 }
 
 // General check for CUDA GPU SM Capabilities
-inline bool cutilCudaCapabilities(int major_version, int minor_version, int argc, char **argv)
+inline bool cutilCudaCapabilities(int major_version, int minor_version)
 {
     cudaDeviceProp deviceProp;
     deviceProp.major = 0;
@@ -510,8 +511,7 @@ inline bool cutilCudaCapabilities(int major_version, int minor_version, int argc
     }
     else
     {
-        printf("There is no device supporting CUDA compute capability %d.%d.\n", major_version, minor_version);
-//        __cutilQAFinish(argc, argv, true);
+        printf("No GPU device was found that can support CUDA compute capability %d.%d.\n", major_version, minor_version);
         return false;
     }
 }

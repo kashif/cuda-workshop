@@ -1,5 +1,5 @@
 /*
- * Copyright 1993-2010 NVIDIA Corporation.  All rights reserved.
+ * Copyright 1993-2012 NVIDIA Corporation.  All rights reserved.
  *
  * Please refer to the NVIDIA end user license agreement (EULA) associated
  * with this source code for terms and conditions that govern your use of
@@ -17,7 +17,7 @@
 #include <stdlib.h>
 
 #include "drvapi_error_string.h"
-#include "string_helper.h"
+#include "helper_string.h"
 
 // We define these calls here, so the user doesn't need to include __FILE__ and __LINE__
 // The advantage is the developers gets to use the inline function so they can debug
@@ -63,15 +63,16 @@ inline int _ConvertSMVer2CoresDrvApi(int major, int minor)
 		int Cores;
 	} sSMtoCores;
 
-        sSMtoCores nGpuArchCoresPerSM[] =
-        { { 0x10,  8 },
-          { 0x11,  8 },
-          { 0x12,  8 },
-          { 0x13,  8 },
-          { 0x20, 32 },
-          { 0x21, 48 },
-          {   -1, -1 }
-        };
+	sSMtoCores nGpuArchCoresPerSM[] = 
+	{ { 0x10,  8 }, // Tesla Generation (SM 1.0) G80 class
+	  { 0x11,  8 }, // Tesla Generation (SM 1.1) G8x class
+	  { 0x12,  8 }, // Tesla Generation (SM 1.2) G9x class
+	  { 0x13,  8 }, // Tesla Generation (SM 1.3) GT200 class
+	  { 0x20, 32 }, // Fermi Generation (SM 2.0) GF100 class
+	  { 0x21, 48 }, // Fermi Generation (SM 2.1) GF10x class
+	  { 0x30, 192}, // Fermi Generation (SM 3.0) GK10x class
+	  {   -1, -1 }
+	};
 
 	int index = 0;
 	while (nGpuArchCoresPerSM[index].SM != -1) {

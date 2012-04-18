@@ -69,7 +69,7 @@ inline int findExeNameStart(const char *exec_name)
             (exec_name[exename_start] != '\\') && 
             (exec_name[exename_start] != '/') )
     {
-		exename_start--;
+        exename_start--;
     }
     if (exec_name[exename_start] == '\\' || 
         exec_name[exename_start] == '/')
@@ -83,6 +83,10 @@ inline int findExeNameStart(const char *exec_name)
 inline int __shrQAStart(int argc, char **argv)
 {
     bool bQATest = false;
+    // First clear the output buffer
+    fflush(stdout);
+    fflush(stdout);
+
     for (int i=1; i < argc; i++) {
         int string_start = 0;
         while (argv[i][string_start] == '-')
@@ -95,14 +99,16 @@ inline int __shrQAStart(int argc, char **argv)
     }
     
     // We don't want to print the entire path, so we search for the first 
-	int exename_start = findExeNameStart(argv[0]);
+    int exename_start = findExeNameStart(argv[0]);
     if (bQATest) {
-        printf("&&&& RUNNING %s", &(argv[0][exename_start]));
-        for (int i=1; i < argc; i++) printf(" %s", argv[i]);
-        printf("\n");
+        fprintf(stdout, "&&&& RUNNING %s", &(argv[0][exename_start]));
+        for (int i=1; i < argc; i++) fprintf(stdout, " %s", argv[i]);
+        fprintf(stdout, "\n");
     } else {
-        printf("[%s] starting...\n", &(argv[0][exename_start]));
+        fprintf(stdout, "[%s] starting...\n", &(argv[0][exename_start]));
     }
+    fflush(stdout);
+    printf("\n"); fflush(stdout);
     return exename_start;
 }
 
@@ -114,19 +120,20 @@ enum eQAstatus {
 
 inline void __ExitInTime(int seconds)
 {
-    printf("> exiting in %d seconds: ", seconds);
+    fprintf(stdout, "> exiting in %d seconds: ", seconds);
     fflush(stdout);
     time_t t;
     int count;
     for (t=time(0)+seconds, count=seconds; time(0) < t; count--) {
-        printf("%d...", count ); fflush(stdout);
+        fprintf(stdout, "%d...", count);
 #ifdef WIN32
         Sleep(1000);
 #else
         sleep(1);
 #endif
     }
-    printf("done!\n");
+    fprintf(stdout,"done!\n\n"); 
+	fflush(stdout);
 }
 
 
@@ -146,8 +153,8 @@ inline void __shrQAFinish(int argc, const char **argv, int iStatus)
            bQATest = true;
         }	
         // For SDK individual samples that don't specify -noprompt or -prompt, 
-	// a 3 second delay will happen before exiting, giving a user time to view results
-        if (!STRCASECMP(string_argv, "noprompt")) {
+        // a 3 second delay will happen before exiting, giving a user time to view results
+        if (!STRCASECMP(string_argv, "noprompt") || !STRCASECMP(string_argv, "help")) {
             bNoPrompt = true;
             bQuitInTime = false;
         }
@@ -159,19 +166,20 @@ inline void __shrQAFinish(int argc, const char **argv, int iStatus)
 
     int exename_start = findExeNameStart(argv[0]);
     if (bQATest) {
-        printf("&&&& %s %s", sStatus[iStatus], &(argv[0][exename_start]));
-        for (int i=1; i < argc; i++) printf(" %s", argv[i]);
-        printf("\n");
+        fprintf(stdout, "&&&& %s %s", sStatus[iStatus], &(argv[0][exename_start]));
+        for (int i=1; i < argc; i++) fprintf(stdout, " %s", argv[i]);
+        fprintf(stdout, "\n");
     } else {
-        printf("[%s] test results...\n%s\n", &(argv[0][exename_start]), sStatus[iStatus]);
+        fprintf(stdout, "[%s] test results...\n%s\n", &(argv[0][exename_start]), sStatus[iStatus]);
     }
+    fflush(stdout);
+    printf("\n"); fflush(stdout);
     if (bQuitInTime) {
         __ExitInTime(3);
     } else {
         if (!bNoPrompt) {
-            printf("\nPress <Enter> to exit...\n");
-            fflush( stdout);
-            fflush( stderr);
+            fprintf(stdout, "\nPress <Enter> to exit...\n");
+            fflush(stdout);
             getchar();
         }
     }
@@ -189,8 +197,8 @@ inline void __shrQAFinish2(bool bQATest, int argc, const char **argv, int iStatu
 
         const char *string_argv = &argv[i][string_start];
         // For SDK individual samples that don't specify -noprompt or -prompt, 
-	// a 3 second delay will happen before exiting, giving a user time to view results
-        if (!STRCASECMP(string_argv, "noprompt")) {
+        // a 3 second delay will happen before exiting, giving a user time to view results
+        if (!STRCASECMP(string_argv, "noprompt") || !STRCASECMP(string_argv, "help")) {
             bQuitInTime = false;
         }
         if (!STRCASECMP(string_argv, "prompt")) {
@@ -200,12 +208,13 @@ inline void __shrQAFinish2(bool bQATest, int argc, const char **argv, int iStatu
 
     int exename_start = findExeNameStart(argv[0]);
     if (bQATest) {
-        printf("&&&& %s %s", sStatus[iStatus], &(argv[0][exename_start]));
-        for (int i=1; i < argc; i++) printf(" %s", argv[i]);
-        printf("\n");
+        fprintf(stdout, "&&&& %s %s", sStatus[iStatus], &(argv[0][exename_start]));
+        for (int i=1; i < argc; i++) fprintf(stdout, " %s", argv[i]);
+        fprintf(stdout, "\n");
     } else {
-        printf("[%s] test results...\n%s\n", &(argv[0][exename_start]), sStatus[iStatus]);
+        fprintf(stdout, "[%s] test results...\n%s\n", &(argv[0][exename_start]), sStatus[iStatus]);
     }
+    fflush(stdout);
     
     if (bQuitInTime) {
         __ExitInTime(3);

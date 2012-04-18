@@ -21,7 +21,7 @@
 // Copyright (c) NVIDIA Corporation. All rights reserved.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cutil.h>
+#include <sdkHelper.h>
 #include <rendercheck_d3d10.h>
 
 HRESULT CheckRenderD3D10::ActiveRenderTargetToPPM(ID3D10Device *pDevice, const char *zFileName)
@@ -76,7 +76,7 @@ HRESULT CheckRenderD3D10::ResourceToPPM(ID3D10Device*pDevice, ID3D10Resource *pR
 	pTargetTexture->Unmap(0);
 
 	// Prepends the PPM header info and bumps byte data afterwards
-	cutSavePPM4ub(zFileName, pPPMData, desc.Width, desc.Height);
+	sdkSavePPM4ub(zFileName, pPPMData, desc.Width, desc.Height);
 
 	delete [] pPPMData;
 	pTargetTexture->Release();
@@ -87,7 +87,7 @@ HRESULT CheckRenderD3D10::ResourceToPPM(ID3D10Device*pDevice, ID3D10Resource *pR
 bool CheckRenderD3D10::PPMvsPPM( const char *src_file, const char *ref_file, const char *exec_path, 
                                  const float epsilon, const float threshold )
 {
-    char *ref_file_path = cutFindFilePath(ref_file, exec_path);
+    char *ref_file_path = sdkFindFilePath(ref_file, exec_path);
     if (ref_file_path == NULL) {
         printf("CheckRenderD3D10::PPMvsPPM unable to find <%s> in <%s> Aborting comparison!\n", ref_file, exec_path);
         printf(">>> Check info.xml and [project//data] folder <%s> <<<\n", ref_file);
@@ -96,5 +96,5 @@ bool CheckRenderD3D10::PPMvsPPM( const char *src_file, const char *ref_file, con
         return false;
     }
 
-    return cutComparePPM(src_file,ref_file_path,epsilon,threshold,true) == CUTTrue;
+	return (sdkComparePPM(src_file,ref_file_path,epsilon,threshold,true) == true);
 }

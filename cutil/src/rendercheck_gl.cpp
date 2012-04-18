@@ -24,9 +24,8 @@
 // Copyright (c) NVIDIA Corporation. All rights reserved.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cutil.h>
-#include "rendercheck_gl.h"
-
+#include <sdkHelper.h>
+#include <rendercheck_gl.h>
 
 // CheckRender::Base class for CheckRender (there will be default functions all classes derived from this)
 CheckRender::CheckRender(unsigned int width, unsigned int height, unsigned int Bpp,
@@ -98,9 +97,9 @@ CheckRender::savePGM(  const char *zfilename, bool bInvert, void **ppReadBuf )
         }
         printf("> Saving PGM: <%s>\n", zfilename);
         if (ppReadBuf) {
-		    cutSavePGMub(zfilename, *(unsigned char **)ppReadBuf, m_Width, m_Height);
+		    sdkSavePGM<unsigned char>(zfilename, *(unsigned char **)ppReadBuf, m_Width, m_Height);
         } else {
-		    cutSavePGMub(zfilename, (unsigned char *)m_pImageData, m_Width, m_Height);
+		    sdkSavePGM<unsigned char>(zfilename, (unsigned char *)m_pImageData, m_Width, m_Height);
         }
     }
 }
@@ -131,9 +130,9 @@ CheckRender::savePPM(  const char *zfilename, bool bInvert, void **ppReadBuf )
         }
         printf("> Saving PPM: <%s>\n", zfilename);
         if (ppReadBuf) {
-		    cutSavePPM4ub(zfilename, *(unsigned char **)ppReadBuf, m_Width, m_Height);
+		    sdkSavePPM4ub(zfilename, *(unsigned char **)ppReadBuf, m_Width, m_Height);
         } else {
-		    cutSavePPM4ub(zfilename, (unsigned char *)m_pImageData, m_Width, m_Height);
+		    sdkSavePPM4ub(zfilename, (unsigned char *)m_pImageData, m_Width, m_Height);
         }
     }
 }
@@ -145,7 +144,7 @@ CheckRender::PGMvsPGM( const char *src_file, const char *ref_file, const float e
     unsigned long error_count = 0;
     unsigned int width, height;
 
-    char *ref_file_path = cutFindFilePath(ref_file, m_ExecPath);
+    char *ref_file_path = sdkFindFilePath(ref_file, m_ExecPath);
     if (ref_file_path == NULL) {
         printf("CheckRender::PGMvsPGM unable to find <%s> in <%s> Aborting comparison!\n", ref_file, m_ExecPath);
         printf(">>> Check info.xml and [project//data] folder <%s> <<<\n", ref_file);
@@ -161,18 +160,18 @@ CheckRender::PGMvsPGM( const char *src_file, const char *ref_file, const float e
 		printf("   src_file <%s>\n", src_file);
 		printf("   ref_file <%s>\n", ref_file_path);
 
-        if (cutLoadPGMub(ref_file_path, &ref_data, &width, &height) != CUTTrue) {
+        if (sdkLoadPPMub(ref_file_path, &ref_data, &width, &height) != true) {
             printf("PGMvsPGM: unable to load ref image file: %s\n", ref_file_path);
             return false;
         }
 
-        if (cutLoadPGMub(src_file, &src_data, &width, &height) != CUTTrue) {
+        if (sdkLoadPPMub(src_file, &src_data, &width, &height) != true) {
             printf("PGMvsPGM: unable to load src image file: %s\n", src_file);
             return false;
         }
 
         printf("PGMvsPGM: comparing images size (%d,%d) epsilon(%2.4f), threshold(%4.2f%%)\n", m_Height, m_Width, epsilon, threshold*100);
-        if (cutCompareubt( ref_data, src_data, m_Height*m_Width, epsilon, threshold ) == CUTFalse) {
+        if (compareDataAsFloatThreshold<unsigned char, float>( ref_data, src_data, m_Height*m_Width, epsilon, threshold ) == false) {
             error_count = 1;
         }
     }
@@ -190,7 +189,7 @@ CheckRender::PPMvsPPM( const char *src_file, const char *ref_file, const float e
 {
     unsigned long error_count = 0;
 
-    char *ref_file_path = cutFindFilePath(ref_file, m_ExecPath);
+    char *ref_file_path = sdkFindFilePath(ref_file, m_ExecPath);
     if (ref_file_path == NULL) {
         printf("CheckRender::PPMvsPPM unable to find <%s> in <%s> Aborting comparison!\n", ref_file, m_ExecPath);
         printf(">>> Check info.xml and [project//data] folder <%s> <<<\n", ref_file);
@@ -205,7 +204,7 @@ CheckRender::PPMvsPPM( const char *src_file, const char *ref_file, const float e
     }
     printf("   src_file <%s>\n", src_file);
     printf("   ref_file <%s>\n", ref_file_path);
-    return (cutComparePPM( src_file, ref_file_path, epsilon, threshold, true ) == CUTTrue ? true : false);
+    return (sdkComparePPM( src_file, ref_file_path, epsilon, threshold, true ) == true ? true : false);
 }
 
 void CheckRender::dumpBin(void *data, unsigned int bytes, const char *filename) 
@@ -229,7 +228,7 @@ bool CheckRender::compareBin2BinUint(const char *src_file, const char *ref_file,
         printf("compareBin2Bin <unsigned int> unable to open src_file: %s\n", src_file);   
         error_count++;
     }
-    char *ref_file_path = cutFindFilePath(ref_file, m_ExecPath);
+    char *ref_file_path = sdkFindFilePath(ref_file, m_ExecPath);
     if (ref_file_path == NULL) {
         printf("compareBin2Bin <unsigned int>  unable to find <%s> in <%s>\n", ref_file, m_ExecPath);
         printf(">>> Check info.xml and [project//data] folder <%s> <<<\n", ref_file);
@@ -257,7 +256,7 @@ bool CheckRender::compareBin2BinUint(const char *src_file, const char *ref_file,
             printf("> compareBin2Bin <unsigned int> nelements=%d, epsilon=%4.2f, threshold=%4.2f\n", nelements, epsilon, threshold);
             printf("   src_file <%s>\n", src_file);
             printf("   ref_file <%s>\n", ref_file_path);
-            if (!cutCompareuit( ref_buffer, src_buffer, nelements, epsilon, threshold))
+            if (!compareData<unsigned int, float>( ref_buffer, src_buffer, nelements, epsilon, threshold))
                 error_count++;
 
             fclose(src_fp);
@@ -292,7 +291,7 @@ bool CheckRender::compareBin2BinFloat(const char *src_file, const char *ref_file
         printf("compareBin2Bin <float> unable to open src_file: %s\n", src_file);   
         error_count = 1;
     }
-    char *ref_file_path = cutFindFilePath(ref_file, m_ExecPath);
+    char *ref_file_path = sdkFindFilePath(ref_file, m_ExecPath);
     if (ref_file_path == NULL) {
         printf("compareBin2Bin <float> unable to find <%s> in <%s>\n", ref_file, m_ExecPath);
         printf(">>> Check info.xml and [project//data] folder <%s> <<<\n", m_ExecPath);
@@ -321,7 +320,7 @@ bool CheckRender::compareBin2BinFloat(const char *src_file, const char *ref_file
 			printf("   src_file <%s>\n", src_file);
 			printf("   ref_file <%s>\n", ref_file_path);
 
-            if (!cutComparefet( ref_buffer, src_buffer, nelements, epsilon, threshold)) {
+            if (!compareDataAsFloatThreshold<float, float>( ref_buffer, src_buffer, nelements, epsilon, threshold)) {
                 error_count++;
             }
 
