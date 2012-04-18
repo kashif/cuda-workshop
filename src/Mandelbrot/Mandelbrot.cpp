@@ -837,7 +837,10 @@ void initMenus()
 	glutCreateMenu(mainMenu);
 	if (!g_runCPU) {
 		glutAddMenuEntry("Hardware single precision", 0);
-		glutAddMenuEntry("Emulated double-single precision", 1);
+        if (numSMs > 2)
+        {
+            glutAddMenuEntry("Emulated double-single precision", 1);
+        }
 		if (haveDoubles) {
 			glutAddMenuEntry("Hardware double precision", 2);
 		}
@@ -984,10 +987,6 @@ void initData(int argc, char **argv)
 	}
     haveDoubles = (version >= 13);
 
-    if (inEmulationMode()) {
-        // workaround since SM13 kernel doesn't produce correct output in emulation mode
-        haveDoubles = false;
-    }
     if (haveDoubles && g_bOpenGLQA) {
 		// running QA test, we want to use the double precision mode
 		precisionMode = 2;
@@ -1159,7 +1158,7 @@ int main(int argc, char **argv)
         chooseCudaDevice(argc, argv, false); // no OpenGL usage
 
         // If the GPU does not meet SM1.1 capabilities, we will quit
-        if (!cutilCudaCapabilities(1,1,argc,argv)) {
+        if (!cutilCudaCapabilities(1,1)) {
             shrQAFinishExit(argc, (const char **)argv, QA_WAIVED);
         }
         // We run the Automated Testing code path
@@ -1172,7 +1171,7 @@ int main(int argc, char **argv)
         chooseCudaDevice(argc, argv, false); // no OpenGL usage
 
         // If the GPU does not meet a minimum of SM1.1 capabilities, we will quit
-        if (!cutilCudaCapabilities(1,1,argc,argv)) {
+        if (!cutilCudaCapabilities(1,1)) {
             shrQAFinishExit(argc, (const char **)argv, QA_WAIVED);
         }
 
@@ -1199,7 +1198,7 @@ int main(int argc, char **argv)
         chooseCudaDevice(argc, argv, true); // yes to OpenGL usage
 
         // If the GPU does not meet SM1.1 capabilities, we quit
-        if (!cutilCudaCapabilities(1,1,argc,argv)) {
+        if (!cutilCudaCapabilities(1,1)) {
             cutilDeviceReset();
             shrQAFinishExit(argc, (const char **)argv, QA_WAIVED);
         }

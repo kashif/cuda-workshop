@@ -28,15 +28,154 @@
 
 // Utilities and system includes
 #include <cublas_v2.h>
-#include <shrUtils.h>
+#include <sdkHelper.h>  // helper for shared functions common to CUDA SDK samples
 #include <shrQATest.h>
-#include "cutil_inline.h"
+#include <shrUtils.h>
+
+#include <cuda_runtime.h>
+
 #include "matrixMul.h"
 
 // includes, kernels
-#include "matrixMul_kernel.cu"
+#include <matrixMul_kernel.cu>
 
 static char *sSDKsample = "matrixMul";
+
+////////////////////////////////////////////////////////////////////////////////
+// These are CUDA Helper functions
+
+    // This will output the proper CUDA error strings in the event that a CUDA host call returns an error
+    #define checkCudaErrors(err)           __checkCudaErrors (err, __FILE__, __LINE__)
+
+    inline void __checkCudaErrors( cudaError err, const char *file, const int line )
+    {
+        if( cudaSuccess != err) {
+		    fprintf(stderr, "%s(%i) : CUDA Runtime API error %d: %s.\n",
+                    file, line, (int)err, cudaGetErrorString( err ) );
+            exit(-1);
+        }
+    }
+
+    // This will output the proper error string when calling cudaGetLastError
+    #define getLastCudaError(msg)      __getLastCudaError (msg, __FILE__, __LINE__)
+
+    inline void __getLastCudaError( const char *errorMessage, const char *file, const int line )
+    {
+        cudaError_t err = cudaGetLastError();
+        if( cudaSuccess != err) {
+            fprintf(stderr, "%s(%i) : getLastCudaError() CUDA error : %s : (%d) %s.\n",
+                    file, line, errorMessage, (int)err, cudaGetErrorString( err ) );
+            exit(-1);
+        }
+    }
+
+    // General GPU Device CUDA Initialization
+    int gpuDeviceInit(int devID)
+    {
+        int deviceCount;
+        checkCudaErrors(cudaGetDeviceCount(&deviceCount));
+        if (deviceCount == 0) {
+            fprintf(stderr, "gpuDeviceInit() CUDA error: no devices supporting CUDA.\n");
+            exit(-1);
+        }
+        if (devID < 0) 
+            devID = 0;
+        if (devID > deviceCount-1) {
+            fprintf(stderr, "\n");
+            fprintf(stderr, ">> %d CUDA capable GPU device(s) detected. <<\n", deviceCount);
+            fprintf(stderr, ">> gpuDeviceInit (-device=%d) is not a valid GPU device. <<\n", devID);
+            fprintf(stderr, "\n");
+            return -devID;
+        }
+
+        cudaDeviceProp deviceProp;
+        checkCudaErrors( cudaGetDeviceProperties(&deviceProp, devID) );
+        if (deviceProp.major < 1) {
+            fprintf(stderr, "gpuDeviceInit(): GPU device does not support CUDA.\n");
+            exit(-1);                                                  \
+        }
+
+        checkCudaErrors( cudaSetDevice(devID) );
+        printf("> gpuDeviceInit() CUDA device [%d]: %s\n", devID, deviceProp.name);
+        return devID;
+    }
+
+    // This function returns the best GPU (with maximum GFLOPS)
+    int gpuGetMaxGflopsDeviceId()
+    {
+	    int current_device   = 0, sm_per_multiproc = 0;
+	    int max_compute_perf = 0, max_perf_device  = 0;
+	    int device_count     = 0, best_SM_arch     = 0;
+	    cudaDeviceProp deviceProp;
+
+	    cudaGetDeviceCount( &device_count );
+	    // Find the best major SM Architecture GPU device
+	    while ( current_device < device_count ) {
+		    cudaGetDeviceProperties( &deviceProp, current_device );
+		    if (deviceProp.major > 0 && deviceProp.major < 9999) {
+			    best_SM_arch = MAX(best_SM_arch, deviceProp.major);
+		    }
+		    current_device++;
+	    }
+
+        // Find the best CUDA capable GPU device
+        current_device = 0;
+        while( current_device < device_count ) {
+           cudaGetDeviceProperties( &deviceProp, current_device );
+           if (deviceProp.major == 9999 && deviceProp.minor == 9999) {
+               sm_per_multiproc = 1;
+		   } else {
+               sm_per_multiproc = _ConvertSMVer2Cores(deviceProp.major, deviceProp.minor);
+           }
+
+           int compute_perf  = deviceProp.multiProcessorCount * sm_per_multiproc * deviceProp.clockRate;
+           if( compute_perf  > max_compute_perf ) {
+               // If we find GPU with SM major > 2, search only these
+               if ( best_SM_arch > 2 ) {
+                   // If our device==dest_SM_arch, choose this, or else pass
+                   if (deviceProp.major == best_SM_arch) {	
+                       max_compute_perf  = compute_perf;
+                       max_perf_device   = current_device;
+                   }
+               } else {
+                   max_compute_perf  = compute_perf;
+                   max_perf_device   = current_device;
+               }
+           }
+           ++current_device;
+	    }
+	    return max_perf_device;
+    }
+
+    // Initialization code to find the best CUDA Device
+    int findCudaDevice(int argc, const char **argv)
+    {
+        cudaDeviceProp deviceProp;
+        int devID = 0;
+        // If the command-line has a device number specified, use it
+        if (checkCmdLineFlag(argc, argv, "device")) {
+            devID = getCmdLineArgumentInt(argc, argv, "device=");
+            if (devID < 0) {
+                printf("Invalid command line parameters\n");
+                exit(-1);
+            } else {
+                devID = gpuDeviceInit(devID);
+                if (devID < 0) {
+                   printf("exiting...\n");
+                   shrQAFinishExit(argc, (const char **)argv, QA_FAILED);
+                   exit(-1);
+                }
+            }
+        } else {
+            // Otherwise pick the device with highest Gflops/s
+            devID = gpuGetMaxGflopsDeviceId();
+            checkCudaErrors( cudaSetDevice( devID ) );
+            checkCudaErrors( cudaGetDeviceProperties(&deviceProp, devID) );
+            printf("> Using CUDA device [%d]: %s\n", devID, deviceProp.name);
+        }
+        return devID;
+    }
+// end of CUDA Helper Functions
 
 ////////////////////////////////////////////////////////////////////////////////
 // declaration, forward
@@ -64,7 +203,7 @@ int main(int argc, char** argv)
 	printf("[ %s ]\n", sSDKsample);
 
     //shrSetLogFileName ("matrixMul.txt");
-    shrLog("%s Starting (CUDA and CUBLAS tests)...\n\n", argv[0]);
+    shrLog("%s\n\tStarting (CUDA and CUBLAS tests)...\n\n", argv[0]);
 
     runTest(argc, argv);
 }
@@ -74,21 +213,32 @@ int main(int argc, char** argv)
 ////////////////////////////////////////////////////////////////////////////////
 void runTest(int argc, char** argv)
 {
-    if(shrCheckCmdLineFlag(argc, (const char**)argv, "device"))
+    if(checkCmdLineFlag(argc, (const char**)argv, "device"))
     {
-        cutilDeviceInit(argc, argv);
+        int devID = getCmdLineArgumentInt(argc, (const char **)argv, "device=");
+        if (devID < 0) {
+            printf("Invalid command line parameters\n");
+            exit(-1);
+        } else {
+            devID = gpuDeviceInit(devID);
+            if (devID < 0) {
+               printf("exiting...\n");
+               shrQAFinishExit(argc, (const char **)argv, QA_FAILED);
+               exit(-1);
+            }
+        }
     }
     else
     {
-        cutilSafeCall( cudaSetDevice(cutGetMaxGflopsDeviceId()) );
+        checkCudaErrors( cudaSetDevice(gpuGetMaxGflopsDeviceId()) );
     }
 
     int devID;
     cudaDeviceProp props;
 
     // get number of SMs on this GPU
-    cutilSafeCall(cudaGetDevice(&devID));
-    cutilSafeCall(cudaGetDeviceProperties(&props, devID));
+    checkCudaErrors(cudaGetDevice(&devID));
+    checkCudaErrors(cudaGetDeviceProperties(&props, devID));
 
     // use a larger block size for Fermi and above
     int block_size = (props.major < 2) ? 16 : 32;
@@ -101,11 +251,13 @@ void runTest(int argc, char** argv)
     // Optional Command-line multiplier for matrix sizes
     unsigned int uiWA, uiHA, uiWB, uiHB, uiWC, uiHC;
     int iSizeMultiple = 5;
-    shrGetCmdLineArgumenti(argc, (const char**)argv, "sizemult", &iSizeMultiple); 
+    if (checkCmdLineFlag( argc, (const char **)argv, "sizemult" )) {
+        iSizeMultiple = getCmdLineArgumentInt(argc, (const char**)argv, "sizemult"); 
+    }
     iSizeMultiple = CLAMP(iSizeMultiple, 1, 10);
 
     bool useCublasOnly = false;
-    if(shrCheckCmdLineFlag(argc, (const char**)argv, "cublas"))
+    if(checkCmdLineFlag(argc, (const char**)argv, "cublas"))
         useCublasOnly = true;
 
 	// For GPUs with fewer # of SM's, we limit the maximum size of the matrix
@@ -148,14 +300,14 @@ void runTest(int argc, char** argv)
     float* h_C      = (float*) malloc(mem_size_C);
 	float* h_CUBLAS = (float*) malloc(mem_size_C);
 
-    cutilSafeCall(cudaMalloc((void**) &d_A, mem_size_A));
-    cutilSafeCall(cudaMalloc((void**) &d_B, mem_size_B));
+    checkCudaErrors(cudaMalloc((void**) &d_A, mem_size_A));
+    checkCudaErrors(cudaMalloc((void**) &d_B, mem_size_B));
 
     // copy host memory to device
-    cutilSafeCall(cudaMemcpy(d_A, h_A, mem_size_A, cudaMemcpyHostToDevice) );
-    cutilSafeCall(cudaMemcpy(d_B, h_B, mem_size_B, cudaMemcpyHostToDevice) );
+    checkCudaErrors(cudaMemcpy(d_A, h_A, mem_size_A, cudaMemcpyHostToDevice) );
+    checkCudaErrors(cudaMemcpy(d_B, h_B, mem_size_B, cudaMemcpyHostToDevice) );
     
-    cutilSafeCall(cudaMalloc((void**) &d_C, mem_size_C));
+    checkCudaErrors(cudaMalloc((void**) &d_C, mem_size_C));
    
     // setup execution parameters
     dim3 threads(block_size, block_size);
@@ -168,8 +320,9 @@ void runTest(int argc, char** argv)
     
     // create and start timer
     shrLog("Runing Kernels...\n\n");
-    unsigned int timer_cublas    = 0;
-    unsigned int timer_matrixMul = 0;
+
+	StopWatchInterface * timer_cublas;
+    StopWatchInterface * timer_matrixMul;
 
     // execute the kernel
     int nIter = 30;
@@ -185,31 +338,31 @@ void runTest(int argc, char** argv)
         checkError(ret, "cublas Sgemm returned an error!\n");
 
 		// Start Timing
-		cutilCheckError(cutCreateTimer(&timer_cublas));
-		cutilCheckError(cutStartTimer(timer_cublas));
+		sdkCreateTimer(&timer_cublas);
+		sdkStartTimer(&timer_cublas);
         for (int j = 0; j < nIter; j++) {
             //note cublas is column primary!
             //need to transpose the order
             cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, uiWB, uiHA, uiWA, &alpha, d_B, uiWB, d_A, uiWA, &beta, d_C, uiWA);
 		}
 		// check if kernel execution generated and error
-		cutilCheckMsg("CUBLAS Kernel execution failed");
-		cutilDeviceSynchronize();
+		getLastCudaError("CUBLAS Kernel execution failed");
+		cudaDeviceSynchronize();
 		// stop and destroy timer
-		cutilCheckError(cutStopTimer(timer_cublas));
+		sdkStopTimer(&timer_cublas);
 
-		double dSeconds = cutGetTimerValue(timer_cublas)/((double)nIter * 1000.0);
+		double dSeconds = sdkGetTimerValue(&timer_cublas)/((double)nIter * 1000.0);
 		double dNumOps = 2.0 * (double)uiWA * (double)uiHA * (double)uiWB;
 		double gflops = 1.0e-9 * dNumOps/dSeconds;
 
 		//Log througput, etc
-		shrLogEx(LOGBOTH | MASTER, 0, "> CUBLAS         Throughput = %.4f GFlop/s, Time = %.5f s, Size = %.0f Ops\n\n", 
+		shrLogEx(LOGBOTH | MASTER, 0, "> CUBLAS         %.4f GFlop/s, Time = %.5f s, Size = %.0f Ops\n\n", 
 				gflops, dSeconds, dNumOps);
 
-		cutilCheckError(cutDeleteTimer(timer_cublas));
+		sdkDeleteTimer(&timer_cublas);
 
 		// copy result from device to host
-		cutilSafeCall(cudaMemcpy(h_CUBLAS, d_C, mem_size_C, cudaMemcpyDeviceToHost) );
+		checkCudaErrors(cudaMemcpy(h_CUBLAS, d_C, mem_size_C, cudaMemcpyDeviceToHost) );
 
         checkError(cublasDestroy(handle), "cublasDestroy() error!\n");
 	}
@@ -223,11 +376,11 @@ void runTest(int argc, char** argv)
         } else {
             matrixMul<32><<< grid, threads >>>(d_C, d_A, d_B, uiWA, uiWB);
         }
-        cutilDeviceSynchronize();
+        cudaDeviceSynchronize();
 
 		// Start Timing	
-		cutilCheckError(cutCreateTimer(&timer_matrixMul));
-		cutilCheckError(cutStartTimer(timer_matrixMul));
+		sdkCreateTimer(&timer_matrixMul);
+		sdkStartTimer(&timer_matrixMul);
 		for (int j = 0; j < nIter; j++) {
 			if (block_size == 16) {
 				matrixMul<16><<< grid, threads >>>(d_C, d_A, d_B, uiWA, uiWB);
@@ -236,25 +389,25 @@ void runTest(int argc, char** argv)
 			}
 		}
 		// check if kernel execution generated and error
-		cutilCheckMsg("CUDA matrixMul Kernel execution failed");
+		getLastCudaError("CUDA matrixMul Kernel execution failed");
 
-        cutilDeviceSynchronize();
+        cudaDeviceSynchronize();
 		// stop and destroy timer
-		cutilCheckError(cutStopTimer(timer_matrixMul));
+		sdkStopTimer(&timer_matrixMul);
 
-		double dSeconds = cutGetTimerValue(timer_matrixMul)/((double)nIter * 1000.0);
+		double dSeconds = sdkGetTimerValue(&timer_matrixMul)/((double)nIter * 1000.0);
 		double dNumOps = 2.0 * (double)uiWA * (double)uiHA * (double)uiWB;
 		double gflops = 1.0e-9 * dNumOps/dSeconds;
 
 		//Log througput, etc
-		shrLogEx(LOGBOTH | MASTER, 0, "> CUDA matrixMul Throughput = %.4f GFlop/s, Time = %.5f s, Size = %.0f Ops, ", 
+		shrLogEx(LOGBOTH | MASTER, 0, "> CUDA matrixMul %.4f GFlop/s, Time = %.5f s, Size = %.0f Ops, ", 
 				gflops, dSeconds, dNumOps);
 		shrLogEx(LOGBOTH | MASTER, 0, "NumDevsUsed = %d, Workgroup = %u\n", 1, threads.x * threads.y);
 
-		cutilCheckError(cutDeleteTimer(timer_matrixMul));
+		sdkDeleteTimer(&timer_matrixMul);
 
 		// copy result from device to host
-		cutilSafeCall(cudaMemcpy(h_C, d_C, mem_size_C, cudaMemcpyDeviceToHost) );
+		checkCudaErrors(cudaMemcpy(h_C, d_C, mem_size_C, cudaMemcpyDeviceToHost) );
 	}
 
     // compute reference solution
@@ -264,33 +417,33 @@ void runTest(int argc, char** argv)
 
     // check result (CUBLAS)
 	printf("Comparing CUBLAS & Host results\n");
-    shrBOOL resCUBLAS = shrCompareL2fe(reference, h_CUBLAS, size_C, 1.0e-6f);
-    if (resCUBLAS != shrTRUE) 
+    bool resCUBLAS = sdkCompareL2fe(reference, h_CUBLAS, size_C, 1.0e-6f);
+    if (resCUBLAS != true) 
     {
         printDiff(reference, h_CUBLAS, uiWC, uiHC, 100, 1.0e-5f);
     }
-    shrLog("CUBLAS compares %s\n\n", (shrTRUE == resCUBLAS) ? "OK" : "FAIL");
+    shrLog("CUBLAS compares %s\n\n", (true == resCUBLAS) ? "OK" : "FAIL");
 
     // check result (matrixMul)
 	printf("Comparing CUDA matrixMul & Host results\n");
-    shrBOOL resCUDA = shrCompareL2fe(reference, h_C, size_C, 1.0e-6f);
-    if (resCUDA != shrTRUE) 
+    bool resCUDA = sdkCompareL2fe(reference, h_C, size_C, 1.0e-6f);
+    if (resCUDA != true) 
     {
         printDiff(reference, h_C, uiWC, uiHC, 100, 1.0e-5f);
     }
-    shrLog("CUDA matrixMul compares %s\n\n", (shrTRUE == resCUDA) ? "OK" : "FAIL");
+    shrLog("CUDA matrixMul compares %s\n\n", (true == resCUDA) ? "OK" : "FAIL");
 
     // clean up memory
     free(h_A);
     free(h_B);
     free(h_C);
     free(reference);
-    cutilSafeCall(cudaFree(d_A));
-    cutilSafeCall(cudaFree(d_B));
-    cutilSafeCall(cudaFree(d_C));
+    checkCudaErrors(cudaFree(d_A));
+    checkCudaErrors(cudaFree(d_B));
+    checkCudaErrors(cudaFree(d_C));
 
-    cutilDeviceReset();
-    shrQAFinishExit(argc, (const char **)argv, (resCUDA == shrTRUE && resCUBLAS == shrTRUE) ? QA_PASSED : QA_FAILED);
+    cudaDeviceReset();
+    shrQAFinishExit(argc, (const char **)argv, (resCUDA == true && resCUBLAS == true) ? QA_PASSED : QA_FAILED);
 }
 
 // Allocates a matrix with random float entries.

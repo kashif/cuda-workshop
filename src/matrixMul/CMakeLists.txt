@@ -1,3 +1,7 @@
+INCLUDE_DIRECTORIES(
+  .
+)
+
 CUDA_ADD_EXECUTABLE (matrixMul
   matrixMul.cu
   matrixMul_gold.cpp

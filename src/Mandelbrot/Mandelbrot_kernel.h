@@ -35,6 +35,4 @@ extern "C" void RunMandelbrot1_sm20(uchar4 *dst, const int imageW, const int ima
 									const double xjp, const double yjp, const double scale, const uchar4 colors, const int frame, const int animationFrame, 
 									const int mode, const int numSMs, const bool isJ);
 
-extern "C" int inEmulationMode();
-
 #endif
