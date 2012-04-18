@@ -5,6 +5,7 @@ Here is an organized folder to develop CUDA applications which should work uncha
 ## Configuration
 
 Install [CMake](http://cmake.org/cmake/resources/software.html) via the installer or your package manger, e.g. on OS X you can do:
+
 ```
 $ brew install cmake
 ```
@@ -16,6 +17,7 @@ Finally you will also need to make sure that [GLEW](http://glew.sourceforge.net)
 ## Adding a new project
 
 In the `src/` create a project folder e.g. `matrixMul/` with its source files and create a new `CMakeLists.txt` listing the CUDA and C/C++ files and the libraries to link against e.g.:
+
 ```cmake
 INCLUDE_DIRECTORIES(
   .
@@ -34,6 +36,7 @@ TARGET_LINK_LIBRARIES (matrixMul
 ```
 
 Finally add the new project folder, for example `matrixMul` to the `src/CMakeLists.txt` file:
+
 ```cmake
 add_subdirectory (matrixMul)
 ```
@@ -41,13 +44,17 @@ add_subdirectory (matrixMul)
 ## Compiling
 
 Open a Visual Studio command shell or a terminal in Mac OS X or Linux and go to the top directory and do:
+
 ```
 $ cmake CMakeLists.txt
 ```
+
 Under Windows this should create a Visual Studio project file which you can open, and under Mac OS X or Linux do:
+
 ```
 $ make
 ```
+
 and hopefully the CUDA executable will be compiled in the `bin/` folder.
 
 ## License
