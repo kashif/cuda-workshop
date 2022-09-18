@@ -11,7 +11,7 @@ CUDA_ADD_EXECUTABLE (Mandelbrot
   Mandelbrot_gold.cpp
   Mandelbrot_sm11.cu
   Mandelbrot_sm13.cu
-  OPTIONS "-arch=compute_20"
+#  OPTIONS "-arch=compute_20"
   )
   
 TARGET_LINK_LIBRARIES (Mandelbrot
